@@ -1,0 +1,1019 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10151a">
+  <meta name="description" content="A tiny night-flight arcade game. Catch the glow. Lose the shadows.">
+  <title>Mothlight | A tiny night-flight game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --night: #10151a;
+      --night-raised: #171e24;
+      --line: #303a40;
+      --paper: #f4f1e8;
+      --muted: #9aa6a8;
+      --lime: #d8ff6b;
+      --mint: #85f0cf;
+      --pink: #ff8295;
+      --mono: "DM Mono", monospace;
+      --sans: "Space Grotesk", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      background-color: var(--night);
+      background-image: radial-gradient(ellipse at 70% 0%, #26332d 0%, transparent 43%),
+                        radial-gradient(#a2c79a12 0.7px, transparent 0.7px);
+      background-size: auto, 5px 5px;
+      color: var(--paper);
+      font-family: var(--sans);
+    }
+
+    button { font: inherit; }
+
+    .shell {
+      width: min(1200px, 100% - 64px);
+      min-height: 100vh;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      min-height: 82px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      color: var(--paper);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 27px;
+      height: 27px;
+      border: 1px solid var(--lime);
+      border-radius: 50% 50% 48% 48%;
+      position: relative;
+      transform: rotate(-35deg);
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      position: absolute;
+      top: 4px;
+      width: 10px;
+      height: 17px;
+      border: 1px solid var(--lime);
+      border-radius: 80% 20% 70% 30%;
+      content: "";
+    }
+
+    .brand-mark::before { left: -6px; transform: rotate(-23deg); }
+    .brand-mark::after { right: -6px; transform: scaleX(-1) rotate(-23deg); }
+
+    .top-note, .eyebrow, .stat-label, .footer-note, .control-key {
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .top-note { display: flex; align-items: center; gap: 9px; }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 12px #85f0cf88;
+    }
+
+    main { flex: 1; padding: 32px 0 24px; }
+
+    .intro {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 23px;
+    }
+
+    .eyebrow { margin: 0 0 8px; color: var(--mint); }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .intro-copy {
+      max-width: 330px;
+      margin: 0 0 2px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .game-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 220px;
+      align-items: stretch;
+      border: 1px solid var(--line);
+      background: #141b20;
+    }
+
+    .stage-column { min-width: 0; }
+
+    .stage {
+      position: relative;
+      overflow: hidden;
+      background: #101920;
+      isolation: isolate;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 8 / 5;
+      touch-action: none;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #0d1519ad;
+      backdrop-filter: blur(5px);
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay-panel {
+      width: min(390px, 100%);
+      padding: 27px 28px 25px;
+      border: 1px solid #56615d;
+      background: #151d20ed;
+      text-align: center;
+      box-shadow: 0 18px 70px #0007;
+    }
+
+    .overlay-kicker { margin: 0 0 10px; color: var(--lime); }
+
+    .overlay-title {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 46px);
+      font-weight: 600;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+
+    .overlay-copy {
+      max-width: 290px;
+      margin: 13px auto 21px;
+      color: #bdc6c1;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .primary-button {
+      min-height: 47px;
+      padding: 0 24px;
+      border: 1px solid var(--lime);
+      background: var(--lime);
+      color: #162019;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 130ms ease, transform 130ms ease;
+    }
+
+    .primary-button:hover { transform: translateY(-2px); background: #e4ff9a; }
+    .primary-button:focus-visible, .icon-button:focus-visible, .touch-button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+
+    .overlay-hint { margin: 17px 0 0; color: #87938f; }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      border-left: 1px solid var(--line);
+    }
+
+    .stats { padding: 22px 19px 17px; }
+
+    .stat {
+      padding: 0 0 16px;
+      margin: 0 0 16px;
+      border-bottom: 1px solid #303a405c;
+    }
+
+    .stat:last-child { padding: 0; margin: 0; border: 0; }
+    .stat-label { display: block; margin-bottom: 7px; }
+
+    .stat-value {
+      display: flex;
+      min-height: 34px;
+      align-items: center;
+      gap: 9px;
+      font-size: 28px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+
+    .stat-unit { color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; }
+    .score-value { color: var(--lime); }
+    .combo-value { color: var(--mint); }
+    .timer-value { font-family: var(--mono); font-size: 25px; }
+
+    .lives { display: flex; gap: 6px; align-items: center; }
+
+    .life-dot {
+      width: 11px;
+      height: 11px;
+      border: 1px solid var(--pink);
+      border-radius: 50%;
+      background: var(--pink);
+      box-shadow: 0 0 8px #ff829566;
+    }
+
+    .life-dot.lost { background: transparent; box-shadow: none; opacity: 0.48; }
+
+    .side-bottom {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: end;
+      padding: 16px 19px 18px;
+    }
+
+    .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+    .icon-button {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--paper);
+      cursor: pointer;
+      font-size: 12px;
+      transition: border-color 120ms ease, background 120ms ease;
+    }
+
+    .icon-button:hover { border-color: #89978c; background: #222b30; }
+    .icon-button:disabled { cursor: default; opacity: 0.44; }
+
+    .dash-meter { height: 3px; margin-top: 13px; background: #303a40; }
+    .dash-meter-fill { width: 100%; height: 100%; background: var(--mint); transition: width 100ms linear; }
+    .dash-copy { display: flex; justify-content: space-between; margin-top: 7px; }
+
+    .touch-controls {
+      display: none;
+      min-height: 93px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      background: #131a1f;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .dpad {
+      width: 138px;
+      display: grid;
+      grid-template-columns: repeat(3, 38px);
+      grid-template-rows: repeat(2, 34px);
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .touch-button {
+      border: 1px solid #3b484b;
+      background: #202a2d;
+      color: var(--paper);
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .touch-button:active, .touch-button.pressed { border-color: var(--mint); background: #354642; }
+
+    .dpad .up { grid-column: 2; grid-row: 1; }
+    .dpad .left { grid-column: 1; grid-row: 2; }
+    .dpad .down { grid-column: 2; grid-row: 2; }
+    .dpad .right { grid-column: 3; grid-row: 2; }
+
+    .dash-button {
+      min-width: 91px;
+      min-height: 55px;
+      border-color: #667048;
+      color: var(--lime);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .footer {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .footer-note { margin: 0; font-size: 10px; }
+    .keycap { color: var(--paper); }
+
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 32px, 610px); }
+      .topbar { min-height: 67px; }
+      main { padding-top: 24px; }
+      .intro { align-items: start; }
+      .intro-copy { max-width: 205px; font-size: 12px; }
+      .game-layout { grid-template-columns: 1fr; }
+      .side-panel { display: grid; grid-template-columns: 1fr auto; border-left: 0; border-top: 1px solid var(--line); }
+      .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; padding: 13px 14px; }
+      .stat { padding: 0; margin: 0; border: 0; }
+      .stat-label { margin-bottom: 6px; font-size: 9px; }
+      .stat-value { min-height: 27px; gap: 4px; font-size: 21px; }
+      .timer-value { font-size: 19px; }
+      .life-dot { width: 9px; height: 9px; }
+      .side-bottom { min-width: 135px; padding: 10px 12px; border-left: 1px solid var(--line); }
+      .dash-meter, .dash-copy { display: none; }
+      .touch-controls { display: flex; }
+      .footer { min-height: 54px; }
+      .footer-note { font-size: 9px; }
+    }
+
+    @media (max-width: 440px) {
+      .shell { width: calc(100% - 24px); }
+      .top-note { font-size: 9px; }
+      .intro { display: block; }
+      h1 { font-size: 32px; }
+      .intro-copy { max-width: 310px; margin-top: 9px; }
+      .stats { gap: 5px; padding-inline: 10px; }
+      .stat-value { font-size: 18px; }
+      .timer-value { font-size: 17px; }
+      .stat-label { font-size: 8px; }
+      .side-bottom { min-width: 118px; padding: 9px; }
+      .action-row { gap: 5px; }
+      .icon-button { font-size: 10px; }
+      .footer-note { font-size: 8px; }
+      .overlay-panel { padding: 22px 18px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="wordmark" href="#" aria-label="Mothlight home"><span class="brand-mark" aria-hidden="true"></span>MOTHLIGHT</a>
+      <div class="top-note"><span class="live-dot" aria-hidden="true"></span>A LITTLE NIGHT FLIGHT</div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">ARCADE / 01</p>
+          <h1 id="page-title">Follow the glow.</h1>
+        </div>
+        <p class="intro-copy">Catch drifting light. Keep clear of the things that follow it. See how long your wings hold out.</p>
+      </section>
+
+      <section class="game-layout" aria-label="Mothlight arcade game">
+        <div class="stage-column">
+          <div class="stage">
+            <canvas id="game" width="960" height="600" aria-label="Game field. Move with arrow keys or WASD, and dash with Space."></canvas>
+            <div class="overlay" id="overlay">
+              <div class="overlay-panel" role="dialog" aria-labelledby="overlay-title" aria-describedby="overlay-copy">
+                <p class="eyebrow overlay-kicker" id="overlay-kicker">YOUR NIGHT STARTS HERE</p>
+                <h2 class="overlay-title" id="overlay-title">Find the light.</h2>
+                <p class="overlay-copy" id="overlay-copy">Gather glowing seeds, build a streak, and outfly the shadows until dawn.</p>
+                <button class="primary-button" id="start-button" type="button">Start flying</button>
+                <p class="overlay-hint footer-note">MOVE <span class="keycap">WASD / ARROWS</span> &nbsp; DASH <span class="keycap">SPACE</span></p>
+              </div>
+            </div>
+          </div>
+          <div class="touch-controls" aria-label="Touch game controls">
+            <div class="dpad" aria-label="Move">
+              <button class="touch-button up" data-key="ArrowUp" type="button" aria-label="Move up">&#9650;</button>
+              <button class="touch-button left" data-key="ArrowLeft" type="button" aria-label="Move left">&#9664;</button>
+              <button class="touch-button down" data-key="ArrowDown" type="button" aria-label="Move down">&#9660;</button>
+              <button class="touch-button right" data-key="ArrowRight" type="button" aria-label="Move right">&#9654;</button>
+            </div>
+            <button class="touch-button dash-button" id="touch-dash" type="button" aria-label="Dash">DASH</button>
+          </div>
+        </div>
+
+        <aside class="side-panel" aria-label="Game stats and controls">
+          <div class="stats" aria-live="polite">
+            <div class="stat">
+              <span class="stat-label">Glow</span>
+              <span class="stat-value score-value" id="score">0000</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Streak</span>
+              <span class="stat-value combo-value"><span id="combo">x0</span><span class="stat-unit">SEEDS</span></span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Nightfall</span>
+              <span class="stat-value timer-value" id="timer">60:00</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Wings</span>
+              <span class="stat-value lives" id="lives" aria-label="3 lives remaining"><span class="life-dot"></span><span class="life-dot"></span><span class="life-dot"></span></span>
+            </div>
+          </div>
+          <div class="side-bottom">
+            <div class="action-row">
+              <button class="icon-button" id="pause-button" type="button" disabled>Pause</button>
+              <button class="icon-button" id="sound-button" type="button" aria-pressed="false">Sound off</button>
+            </div>
+            <div class="dash-meter" aria-label="Dash recharge"><div class="dash-meter-fill" id="dash-meter"></div></div>
+            <div class="dash-copy footer-note"><span>WING BURST</span><span id="dash-status">READY</span></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p class="footer-note">BEST FLIGHT <span class="keycap" id="best-score">0000</span></p>
+      <p class="footer-note">A SMALL GAME FOR A QUIET MINUTE</p>
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.querySelector("#game");
+      const context = canvas.getContext("2d");
+      const overlay = document.querySelector("#overlay");
+      const startButton = document.querySelector("#start-button");
+      const overlayTitle = document.querySelector("#overlay-title");
+      const overlayCopy = document.querySelector("#overlay-copy");
+      const overlayKicker = document.querySelector("#overlay-kicker");
+      const scoreDisplay = document.querySelector("#score");
+      const comboDisplay = document.querySelector("#combo");
+      const timerDisplay = document.querySelector("#timer");
+      const livesDisplay = document.querySelector("#lives");
+      const bestDisplay = document.querySelector("#best-score");
+      const pauseButton = document.querySelector("#pause-button");
+      const soundButton = document.querySelector("#sound-button");
+      const dashMeter = document.querySelector("#dash-meter");
+      const dashStatus = document.querySelector("#dash-status");
+      const touchDash = document.querySelector("#touch-dash");
+      const width = canvas.width;
+      const height = canvas.height;
+      const keys = new Set();
+      const stars = Array.from({ length: 100 }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 1.45 + 0.35,
+        alpha: Math.random() * 0.45 + 0.12,
+        phase: Math.random() * Math.PI * 2
+      }));
+
+      let state = "ready";
+      let player;
+      let seeds = [];
+      let hunters = [];
+      let particles = [];
+      let score = 0;
+      let combo = 0;
+      let comboTimer = 0;
+      let remaining = 60;
+      let spawnTimer = 0;
+      let hunterTimer = 4;
+      let dashCooldown = 0;
+      let dashDuration = 0;
+      let invulnerability = 0;
+      let elapsed = 0;
+      let shake = 0;
+      let lastFrame = 0;
+      let animationFrame = 0;
+      let soundEnabled = false;
+      let audioContext;
+      let bestScore = 0;
+
+      try {
+        bestScore = Number(localStorage.getItem("mothlight-best") || 0);
+      } catch {
+        bestScore = 0;
+      }
+      bestDisplay.textContent = String(bestScore).padStart(4, "0");
+
+      const random = (min, max) => Math.random() * (max - min) + min;
+
+      function playTone(frequency, duration, type = "sine", volume = 0.035) {
+        if (!soundEnabled) return;
+        try {
+          audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+          if (audioContext.state === "suspended") audioContext.resume();
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = type;
+          oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+          gain.gain.setValueAtTime(volume, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + duration);
+        } catch {
+          soundEnabled = false;
+          soundButton.textContent = "Sound off";
+          soundButton.setAttribute("aria-pressed", "false");
+        }
+      }
+
+      function updateDisplays() {
+        scoreDisplay.textContent = String(score).padStart(4, "0");
+        comboDisplay.textContent = `x${combo}`;
+        const totalSeconds = Math.ceil(remaining);
+        timerDisplay.textContent = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+        const lives = Math.max(0, player?.lives ?? 3);
+        livesDisplay.setAttribute("aria-label", `${lives} ${lives === 1 ? "life" : "lives"} remaining`);
+        livesDisplay.replaceChildren(...Array.from({ length: 3 }, (_, index) => {
+          const dot = document.createElement("span");
+          dot.className = `life-dot${index >= lives ? " lost" : ""}`;
+          dot.setAttribute("aria-hidden", "true");
+          return dot;
+        }));
+        dashMeter.style.width = `${Math.max(0, 1 - dashCooldown / 3.4) * 100}%`;
+        dashStatus.textContent = dashCooldown <= 0 ? "READY" : "CHARGING";
+      }
+
+      function resetGame() {
+        player = { x: width / 2, y: height / 2, vx: 0, vy: 0, lives: 3, facing: 0 };
+        seeds = [];
+        hunters = [];
+        particles = [];
+        score = 0;
+        combo = 0;
+        comboTimer = 0;
+        remaining = 60;
+        spawnTimer = 0.2;
+        hunterTimer = 5;
+        dashCooldown = 0;
+        dashDuration = 0;
+        invulnerability = 1;
+        shake = 0;
+        keys.clear();
+        state = "playing";
+        overlay.hidden = true;
+        pauseButton.disabled = false;
+        pauseButton.textContent = "Pause";
+        updateDisplays();
+        lastFrame = performance.now();
+        cancelAnimationFrame(animationFrame);
+        animationFrame = requestAnimationFrame(frame);
+      }
+
+      function setOverlay(kind) {
+        overlay.hidden = false;
+        if (kind === "paused") {
+          overlayKicker.textContent = "TAKE YOUR TIME";
+          overlayTitle.textContent = "Night paused.";
+          overlayCopy.textContent = "Your wings can rest. Pick up where you left off whenever you're ready.";
+          startButton.textContent = "Keep flying";
+        } else if (kind === "won") {
+          overlayKicker.textContent = "YOU MADE IT TO DAWN";
+          overlayTitle.textContent = "A beautiful flight.";
+          overlayCopy.textContent = `You brought home ${score} glow${score === 1 ? "" : "s"}. Fancy another lap?`;
+          startButton.textContent = "Fly again";
+        } else if (kind === "lost") {
+          overlayKicker.textContent = "THE NIGHT GOT YOU";
+          overlayTitle.textContent = "Close one.";
+          overlayCopy.textContent = `You gathered ${score} glow${score === 1 ? "" : "s"}. The next flight is yours.`;
+          startButton.textContent = "Try again";
+        }
+        startButton.focus();
+      }
+
+      function finishGame(won) {
+        state = won ? "won" : "lost";
+        pauseButton.disabled = true;
+        pauseButton.textContent = "Pause";
+        keys.clear();
+        if (score > bestScore) {
+          bestScore = score;
+          bestDisplay.textContent = String(bestScore).padStart(4, "0");
+          try {
+            localStorage.setItem("mothlight-best", String(bestScore));
+          } catch {}
+        }
+        setOverlay(won ? "won" : "lost");
+      }
+
+      function togglePause() {
+        if (state === "playing") {
+          state = "paused";
+          pauseButton.textContent = "Resume";
+          keys.clear();
+          setOverlay("paused");
+        } else if (state === "paused") {
+          state = "playing";
+          overlay.hidden = true;
+          pauseButton.textContent = "Pause";
+          lastFrame = performance.now();
+          animationFrame = requestAnimationFrame(frame);
+        }
+      }
+
+      function addBurst(x, y, color, count = 12, force = 170) {
+        for (let index = 0; index < count; index++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = random(force * 0.25, force);
+          const life = random(0.24, 0.7);
+          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life, maxLife: life, radius: random(1.4, 3.5), color });
+        }
+      }
+
+      function spawnSeed() {
+        let x;
+        let y;
+        let attempts = 0;
+        do {
+          x = random(45, width - 45);
+          y = random(45, height - 45);
+          attempts++;
+        } while (attempts < 14 && player && Math.hypot(x - player.x, y - player.y) < 130);
+        seeds.push({ x, y, phase: Math.random() * Math.PI * 2, radius: random(6.5, 9) });
+      }
+
+      function spawnHunter() {
+        const edge = Math.floor(Math.random() * 4);
+        let x = edge === 0 ? -18 : edge === 1 ? width + 18 : random(10, width - 10);
+        let y = edge === 2 ? -18 : edge === 3 ? height + 18 : random(10, height - 10);
+        const speed = random(57, 76) + (60 - remaining) * 0.42;
+        hunters.push({ x, y, speed, radius: random(13, 17), phase: Math.random() * Math.PI * 2, angle: 0 });
+        addBurst(x, y, "#ff8295", 5, 65);
+      }
+
+      function activateDash() {
+        if (state !== "playing" || dashCooldown > 0) return;
+        let dx = Number(keys.has("ArrowRight") || keys.has("KeyD")) - Number(keys.has("ArrowLeft") || keys.has("KeyA"));
+        let dy = Number(keys.has("ArrowDown") || keys.has("KeyS")) - Number(keys.has("ArrowUp") || keys.has("KeyW"));
+        if (!dx && !dy) {
+          dx = Math.cos(player.facing);
+          dy = Math.sin(player.facing);
+        }
+        const magnitude = Math.hypot(dx, dy) || 1;
+        player.vx = (dx / magnitude) * 650;
+        player.vy = (dy / magnitude) * 650;
+        dashCooldown = 3.4;
+        dashDuration = 0.2;
+        invulnerability = Math.max(invulnerability, 0.36);
+        addBurst(player.x, player.y, "#85f0cf", 14, 180);
+        playTone(290, 0.16, "triangle", 0.045);
+        updateDisplays();
+      }
+
+      function collectSeed(seed, index) {
+        seeds.splice(index, 1);
+        combo = comboTimer > 0 ? combo + 1 : 1;
+        comboTimer = 2.1;
+        const gained = 10 + Math.min(combo - 1, 9) * 2;
+        score += gained;
+        addBurst(seed.x, seed.y, "#d8ff6b", 16, 130);
+        playTone(480 + Math.min(combo, 10) * 38, 0.12, "sine", 0.045);
+        updateDisplays();
+      }
+
+      function takeHit(hunter) {
+        if (invulnerability > 0) return;
+        player.lives--;
+        invulnerability = 1.35;
+        combo = 0;
+        comboTimer = 0;
+        shake = 0.32;
+        const angle = Math.atan2(player.y - hunter.y, player.x - hunter.x);
+        player.vx += Math.cos(angle) * 300;
+        player.vy += Math.sin(angle) * 300;
+        addBurst(player.x, player.y, "#ff8295", 22, 210);
+        playTone(135, 0.32, "sawtooth", 0.055);
+        updateDisplays();
+        if (player.lives <= 0) finishGame(false);
+      }
+
+      function update(delta) {
+        elapsed += delta;
+        remaining = Math.max(0, remaining - delta);
+        dashCooldown = Math.max(0, dashCooldown - delta);
+        dashDuration = Math.max(0, dashDuration - delta);
+        invulnerability = Math.max(0, invulnerability - delta);
+        comboTimer = Math.max(0, comboTimer - delta);
+        shake = Math.max(0, shake - delta);
+        if (!comboTimer) combo = 0;
+
+        const directionX = Number(keys.has("ArrowRight") || keys.has("KeyD")) - Number(keys.has("ArrowLeft") || keys.has("KeyA"));
+        const directionY = Number(keys.has("ArrowDown") || keys.has("KeyS")) - Number(keys.has("ArrowUp") || keys.has("KeyW"));
+        const magnitude = Math.hypot(directionX, directionY) || 1;
+        const targetSpeed = dashDuration > 0 ? 650 : 265;
+
+        if (directionX || directionY) {
+          player.vx += (directionX / magnitude * targetSpeed - player.vx) * (1 - Math.exp(-12 * delta));
+          player.vy += (directionY / magnitude * targetSpeed - player.vy) * (1 - Math.exp(-12 * delta));
+          player.facing = Math.atan2(directionY, directionX);
+        } else if (dashDuration <= 0) {
+          player.vx *= Math.exp(-6.5 * delta);
+          player.vy *= Math.exp(-6.5 * delta);
+        }
+
+        player.x = Math.max(23, Math.min(width - 23, player.x + player.vx * delta));
+        player.y = Math.max(23, Math.min(height - 23, player.y + player.vy * delta));
+
+        spawnTimer -= delta;
+        if (spawnTimer <= 0 && seeds.length < 5) {
+          spawnSeed();
+          spawnTimer = random(1.1, 1.7);
+        }
+
+        hunterTimer -= delta;
+        if (hunterTimer <= 0 && hunters.length < 8) {
+          spawnHunter();
+          hunterTimer = Math.max(1.35, 4.7 - (60 - remaining) * 0.048) * random(0.82, 1.18);
+        }
+
+        for (let index = seeds.length - 1; index >= 0; index--) {
+          const seed = seeds[index];
+          seed.phase += delta * 2.2;
+          if (Math.hypot(player.x - seed.x, player.y - seed.y) < 25) collectSeed(seed, index);
+        }
+
+        for (let index = hunters.length - 1; index >= 0; index--) {
+          const hunter = hunters[index];
+          const angle = Math.atan2(player.y - hunter.y, player.x - hunter.x);
+          hunter.angle = angle;
+          hunter.phase += delta * 3;
+          const speed = hunter.speed * (dashDuration > 0 ? 0.88 : 1);
+          hunter.x += Math.cos(angle) * speed * delta;
+          hunter.y += Math.sin(angle) * speed * delta;
+          if (Math.hypot(player.x - hunter.x, player.y - hunter.y) < hunter.radius + 11) {
+            takeHit(hunter);
+            hunters.splice(index, 1);
+            if (state !== "playing") break;
+          }
+        }
+
+        for (let index = particles.length - 1; index >= 0; index--) {
+          const particle = particles[index];
+          particle.life -= delta;
+          particle.x += particle.vx * delta;
+          particle.y += particle.vy * delta;
+          particle.vx *= Math.exp(-2.8 * delta);
+          particle.vy *= Math.exp(-2.8 * delta);
+          if (particle.life <= 0) particles.splice(index, 1);
+        }
+
+        if (elapsed > 0.08) {
+          elapsed = 0;
+          updateDisplays();
+        }
+        if (remaining <= 0 && state === "playing") finishGame(true);
+      }
+
+      function drawBackground() {
+        const background = context.createLinearGradient(0, 0, width, height);
+        background.addColorStop(0, "#142027");
+        background.addColorStop(0.58, "#111b20");
+        background.addColorStop(1, "#18221e");
+        context.fillStyle = background;
+        context.fillRect(0, 0, width, height);
+
+        context.strokeStyle = "#b3d9c007";
+        context.lineWidth = 1;
+        for (let x = 0; x <= width; x += 48) {
+          context.beginPath();
+          context.moveTo(x, 0);
+          context.lineTo(x, height);
+          context.stroke();
+        }
+        for (let y = 0; y <= height; y += 48) {
+          context.beginPath();
+          context.moveTo(0, y);
+          context.lineTo(width, y);
+          context.stroke();
+        }
+
+        for (const star of stars) {
+          const alpha = star.alpha * (0.7 + Math.sin(performance.now() / 750 + star.phase) * 0.3);
+          context.fillStyle = `rgba(207, 229, 197, ${alpha})`;
+          context.beginPath();
+          context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+          context.fill();
+        }
+
+        const glow = context.createRadialGradient(width * 0.5, height * 0.5, 60, width * 0.5, height * 0.5, 390);
+        glow.addColorStop(0, "#9fd99b0a");
+        glow.addColorStop(1, "#10171b55");
+        context.fillStyle = glow;
+        context.fillRect(0, 0, width, height);
+      }
+
+      function drawSeed(seed) {
+        const pulse = 1 + Math.sin(seed.phase) * 0.13;
+        const radius = seed.radius * pulse;
+        const glow = context.createRadialGradient(seed.x, seed.y, 1, seed.x, seed.y, 28);
+        glow.addColorStop(0, "#d8ff6b55");
+        glow.addColorStop(1, "#d8ff6b00");
+        context.fillStyle = glow;
+        context.beginPath();
+        context.arc(seed.x, seed.y, 28, 0, Math.PI * 2);
+        context.fill();
+        context.save();
+        context.translate(seed.x, seed.y);
+        context.rotate(seed.phase * 0.35);
+        context.fillStyle = "#e5ff99";
+        context.shadowColor = "#d8ff6b";
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.moveTo(0, -radius * 1.45);
+        context.lineTo(radius * 0.75, 0);
+        context.lineTo(0, radius * 1.45);
+        context.lineTo(-radius * 0.75, 0);
+        context.closePath();
+        context.fill();
+        context.restore();
+      }
+
+      function drawHunter(hunter) {
+        const wobble = Math.sin(hunter.phase) * 2;
+        context.save();
+        context.translate(hunter.x, hunter.y);
+        context.rotate(hunter.angle + Math.PI / 4);
+        context.strokeStyle = "#ff829577";
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.arc(0, 0, hunter.radius + 6 + wobble, 0, Math.PI * 2);
+        context.stroke();
+        context.fillStyle = "#ff8295";
+        context.shadowColor = "#ff607c";
+        context.shadowBlur = 18;
+        context.beginPath();
+        context.moveTo(0, -hunter.radius);
+        context.lineTo(hunter.radius, 0);
+        context.lineTo(0, hunter.radius);
+        context.lineTo(-hunter.radius, 0);
+        context.closePath();
+        context.fill();
+        context.shadowBlur = 0;
+        context.fillStyle = "#522834";
+        context.fillRect(-3, -3, 6, 6);
+        context.restore();
+      }
+
+      function drawPlayer() {
+        if (invulnerability > 0 && Math.floor(performance.now() / 65) % 2 === 0) return;
+        context.save();
+        context.translate(player.x, player.y);
+        context.rotate(player.facing + Math.PI / 2);
+        const wing = 1 + Math.sin(performance.now() / 55) * 0.12;
+        context.shadowColor = "#85f0cf";
+        context.shadowBlur = dashDuration > 0 ? 30 : 17;
+        context.fillStyle = dashDuration > 0 ? "#e3ff9c" : "#94f4d0";
+
+        context.beginPath();
+        context.ellipse(-9, -4, 8 * wing, 12, -0.55, 0, Math.PI * 2);
+        context.ellipse(9, -4, 8 * wing, 12, 0.55, 0, Math.PI * 2);
+        context.ellipse(-6, 8, 5, 8, 0.5, 0, Math.PI * 2);
+        context.ellipse(6, 8, 5, 8, -0.5, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = "#253a38";
+        context.beginPath();
+        context.ellipse(0, 1, 2.5, 11, 0, 0, Math.PI * 2);
+        context.fill();
+        context.strokeStyle = "#d6ffb5";
+        context.lineWidth = 1.4;
+        context.beginPath();
+        context.moveTo(-1, -7);
+        context.quadraticCurveTo(-7, -18, -10, -17);
+        context.moveTo(1, -7);
+        context.quadraticCurveTo(7, -18, 10, -17);
+        context.stroke();
+        context.restore();
+      }
+
+      function draw() {
+        context.save();
+        if (shake > 0) context.translate(random(-7, 7) * shake / 0.32, random(-5, 5) * shake / 0.32);
+        drawBackground();
+        for (const seed of seeds) drawSeed(seed);
+        for (const hunter of hunters) drawHunter(hunter);
+        for (const particle of particles) {
+          context.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+          context.fillStyle = particle.color;
+          context.beginPath();
+          context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+          context.fill();
+        }
+        context.globalAlpha = 1;
+        if (player) drawPlayer();
+        context.restore();
+      }
+
+      function frame(timestamp) {
+        if (state !== "playing") return;
+        const delta = Math.min((timestamp - lastFrame) / 1000, 0.035);
+        lastFrame = timestamp;
+        update(delta);
+        draw();
+        if (state === "playing") animationFrame = requestAnimationFrame(frame);
+      }
+
+      function setKey(code, pressed) {
+        if (pressed) keys.add(code);
+        else keys.delete(code);
+      }
+
+      window.addEventListener("keydown", event => {
+        const code = event.code;
+        if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(code)) event.preventDefault();
+        if (event.repeat) return;
+        if ((code === "KeyP" || code === "Escape") && (state === "playing" || state === "paused")) {
+          togglePause();
+          return;
+        }
+        if (state !== "playing") {
+          if ((code === "Enter" || code === "Space") && state !== "paused") resetGame();
+          return;
+        }
+        setKey(code, true);
+        if (code === "Space") activateDash();
+      });
+
+      window.addEventListener("keyup", event => setKey(event.code, false));
+      window.addEventListener("blur", () => {
+        keys.clear();
+        if (state === "playing") togglePause();
+      });
+
+      document.querySelectorAll(".touch-button[data-key]").forEach(button => {
+        const key = button.dataset.key;
+        button.addEventListener("pointerdown", event => {
+          event.preventDefault();
+          button.setPointerCapture(event.pointerId);
+          button.classList.add("pressed");
+          setKey(key, true);
+        });
+        const release = () => {
+          button.classList.remove("pressed");
+          setKey(key, false);
+        };
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+      });
+
+      touchDash.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        activateDash();
+      });
+      startButton.addEventListener("click", () => {
+        if (state === "paused") togglePause();
+        else resetGame();
+      });
+      pauseButton.addEventListener("click", togglePause);
+      soundButton.addEventListener("click", () => {
+        soundEnabled = !soundEnabled;
+        soundButton.textContent = soundEnabled ? "Sound on" : "Sound off";
+        soundButton.setAttribute("aria-pressed", String(soundEnabled));
+        if (soundEnabled) playTone(560, 0.1, "sine", 0.035);
+      });
+
+      player = { x: width / 2, y: height / 2, vx: 0, vy: 0, lives: 3, facing: 0 };
+      updateDisplays();
+      draw();
+    })();
+  </script>
+</body>
+</html>
